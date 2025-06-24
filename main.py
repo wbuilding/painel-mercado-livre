@@ -1,111 +1,99 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 import numpy as np
-import plotly.graph_objects as go
 
-st.set_page_config(page_title="Painel de Vendas Mercado Livre", layout="wide", initial_sidebar_state="collapsed")
+# TEMA CLARO PARA OS GRÁFICOS E TABELAS
+st.set_page_config(page_title="Painel de Vendas Mercado Livre", layout="wide")
 
-# Estilo customizado para texto claro nos cards/títulos/tabelas
-st.markdown("""
-    <style>
-        .main {
-            background-color: #181b1e;
-        }
-        div[data-testid="stMetric"] > label {
-            color: #fff !important;
-        }
-        .css-1offfwp {
-            color: #fff !important;
-        }
-        .stTextInput>div>div>input {
-            color: #fff !important;
-            background-color: #222 !important;
-        }
-        .stSelectbox>div>div>div>div {
-            color: #fff !important;
-            background-color: #222 !important;
-        }
-        th, td {
-            color: #fff !important;
-            background-color: #23262b !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
+# TÍTULO
 st.title("Painel de Vendas Mercado Livre")
 
-# Simulação de dados
-# No seu código, troque por dados reais via API!
+# SIMULAÇÃO DE DADOS (troque pelo seu dataframe)
+# Remova esta simulação no seu código, e use seu df_mes
+# ===================
 dados = {
     "Data": pd.date_range("2024-01-01", periods=12, freq="M"),
-    "ID Venda": np.arange(1000, 1012),
-    "Status": ["Pago", "Pago", "Cancelado", "Pago", "Pago", "Pago", "Pago", "Pago", "Cancelado", "Pago", "Pago", "Pago"],
-    "Comprador": ["Cliente A", "Cliente B", "Cliente C", "Cliente D", "Cliente E", "Cliente F", "Cliente G", "Cliente H", "Cliente I", "Cliente J", "Cliente K", "Cliente L"],
-    "Valor Total": np.random.randint(100, 1000, 12),
-    "Status Pagamento": ["Aprovado", "Aprovado", "Cancelado", "Aprovado", "Aprovado", "Aprovado", "Aprovado", "Aprovado", "Cancelado", "Aprovado", "Aprovado", "Aprovado"],
-    "Item": ["Produto A", "Produto B", "Produto C", "Produto B", "Produto D", "Produto A", "Produto C", "Produto B", "Produto D", "Produto B", "Produto C", "Produto A"],
+    "ID Venda": [1001 + i for i in range(12)],
+    "Status": ["Pago", "Pago", "Cancelado", "Pago", "Pago", "Pago", "Pago", "Cancelado", "Pago", "Pago", "Pago", "Pago"],
+    "Comprador": [f"Cliente {chr(65+i)}" for i in range(12)],
+    "Valor Total": np.random.randint(200, 1200, 12),
+    "Status Pagamento": ["Aprovado", "Aprovado", "Cancelado", "Aprovado", "Aprovado", "Aprovado", "Aprovado", "Cancelado", "Aprovado", "Aprovado", "Aprovado", "Aprovado"],
+    "Item": ["Produto A", "Produto B", "Produto C", "Produto D", "Produto B", "Produto A", "Produto C", "Produto D", "Produto C", "Produto B", "Produto A", "Produto D"],
 }
-df = pd.DataFrame(dados)
+df_mes = pd.DataFrame(dados)
+df_mes["Data"] = pd.to_datetime(df_mes["Data"])
+df_mes["Mês/Ano"] = df_mes["Data"].dt.strftime("%m/%Y")
+# ===================
 
-# Filtro por mês
-df["Mês"] = df["Data"].dt.strftime('%Y-%m')
-meses = df["Mês"].unique().tolist()
-mes_selecionado = st.selectbox("Filtrar por mês:", ["Todos"] + meses, key="mes_filtro")
-if mes_selecionado != "Todos":
-    df = df[df["Mês"] == mes_selecionado]
+# FILTRO POR MÊS
+meses = ["Todos"] + sorted(df_mes["Mês/Ano"].unique())
+filtro_mes = st.selectbox("Filtrar por mês:", meses)
+if filtro_mes != "Todos":
+    df_mes_filtrado = df_mes[df_mes["Mês/Ano"] == filtro_mes]
+else:
+    df_mes_filtrado = df_mes.copy()
 
-# Cards com informações principais (claro)
+# CARDS: NOME + VALOR
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric("Vendas totais", f"{df.shape[0]}")
+    st.markdown("**Vendas totais**")
+    st.markdown(f"<h2 style='color:#222'>{df_mes_filtrado.shape[0]}</h2>", unsafe_allow_html=True)
 with col2:
-    st.metric("Receita Total", f"R$ {df['Valor Total'].sum():,.2f}")
+    st.markdown("**Receita total**")
+    st.markdown(f"<h2 style='color:#222'>R$ {df_mes_filtrado['Valor Total'].sum():,.2f}</h2>", unsafe_allow_html=True)
 with col3:
-    st.metric("Ticket Médio 3 meses", f"R$ {df['Valor Total'].mean():,.2f}")
+    st.markdown("**Ticket Médio 3 meses**")
+    ticket_medio = df_mes_filtrado["Valor Total"].mean() if not df_mes_filtrado.empty else 0
+    st.markdown(f"<h2 style='color:#222'>R$ {ticket_medio:,.2f}</h2>", unsafe_allow_html=True)
 with col4:
-    st.metric("Crescimento do mês", "-93.09%")
+    st.markdown("**Crescimento do mês**")
+    # Exemplo fictício, troque por sua lógica real
+    crescimento = -93.09
+    cor = "#222"
+    st.markdown(f"<h2 style='color:{cor}'>{crescimento:.2f}%</h2>", unsafe_allow_html=True)
 
-st.markdown("---")
-
-# Gráfico de linhas Receita por mês (valor)
-df_linhas = df.groupby("Mês")["Valor Total"].sum().reset_index()
-fig = go.Figure()
-fig.add_trace(go.Scatter(
-    x=df_linhas["Mês"],
-    y=df_linhas["Valor Total"],
-    mode="lines+markers+text",
-    text=[f"R$ {v:,.0f}" for v in df_linhas["Valor Total"]],
-    textposition="top center",
-    line=dict(color="#27e1c1")
-))
-fig.update_layout(
-    title=dict(text="Receita por mês (todas as vendas)", font=dict(color="#fff")),
-    xaxis=dict(title="", color="#fff", gridcolor="#444"),
-    yaxis=dict(title="Valor Total", color="#fff", gridcolor="#444"),
-    plot_bgcolor="#222",
-    paper_bgcolor="#222"
+# GRÁFICO DE LINHAS (RECEITA POR MÊS)
+st.markdown("### Receita por mês (todas as vendas)")
+receita_mes = (
+    df_mes.groupby("Mês/Ano")["Valor Total"].sum().reset_index().sort_values("Mês/Ano")
 )
-st.plotly_chart(fig, use_container_width=True)
-
-# Donut status pagamento
-status_counts = df["Status"].value_counts()
-fig2 = go.Figure(data=[go.Pie(labels=status_counts.index, values=status_counts.values, hole=0.6)])
-fig2.update_traces(textinfo="percent+label", marker=dict(colors=["#27e1c1", "#e14b4b"]))
-fig2.update_layout(
-    title=dict(text="Status dos Pagamentos", font=dict(color="#fff")),
-    legend=dict(font=dict(color="#fff")),
-    plot_bgcolor="#222",
-    paper_bgcolor="#222"
+fig_receita = px.line(receita_mes, x="Mês/Ano", y="Valor Total", markers=True, text="Valor Total")
+fig_receita.update_traces(texttemplate="R$ %{y:,.0f}", textposition="top center")
+fig_receita.update_layout(
+    xaxis_title="Mês/Ano",
+    yaxis_title="Valor Total",
+    plot_bgcolor="#181b1f",
+    paper_bgcolor="#181b1f",
+    font_color="#222",
 )
-st.plotly_chart(fig2, use_container_width=True)
+st.plotly_chart(fig_receita, use_container_width=True)
 
-# Tabela: Top 5 produtos mais vendidos
-st.subheader("Top 5 produtos mais vendidos")
-top5 = df["Item"].value_counts().head(5).reset_index()
-top5.columns = ["Produto", "Quantidade vendida"]
-st.dataframe(top5, use_container_width=True, hide_index=True)
+# GRÁFICO DE ROSCA - STATUS DOS PAGAMENTOS
+st.markdown("### Status dos Pagamentos")
+status_pagamentos = df_mes_filtrado["Status Pagamento"].value_counts().reset_index()
+status_pagamentos.columns = ["Status Pagamento", "Quantidade"]
+fig_status = px.pie(status_pagamentos, values="Quantidade", names="Status Pagamento", hole=0.6)
+fig_status.update_traces(textinfo="percent+label")
+fig_status.update_layout(
+    showlegend=True,
+    plot_bgcolor="#181b1f",
+    paper_bgcolor="#181b1f",
+    font_color="#222"
+)
+st.plotly_chart(fig_status, use_container_width=True)
 
-# Tabela de vendas
-st.subheader("Minhas vendas mais recentes:")
-st.dataframe(df[["Data", "ID Venda", "Status", "Comprador", "Valor Total", "Status Pagamento", "Item"]], use_container_width=True)
+# TOP 5 PRODUTOS MAIS VENDIDOS - TABELA
+st.markdown("### Top 5 produtos mais vendidos")
+top5_produtos = df_mes_filtrado["Item"].value_counts().head(5).reset_index()
+top5_produtos.columns = ["Produto", "Quantidade vendida"]
+st.dataframe(top5_produtos, hide_index=True)
 
+# TABELA DE VENDAS (COMPLETA)
+st.markdown("### Minhas vendas mais recentes:")
+st.dataframe(
+    df_mes_filtrado[
+        ["Data", "ID Venda", "Status", "Comprador", "Valor Total", "Status Pagamento", "Item"]
+    ],
+    use_container_width=True
+)
